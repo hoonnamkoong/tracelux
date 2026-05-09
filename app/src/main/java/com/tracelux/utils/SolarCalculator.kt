@@ -50,8 +50,14 @@ object SolarCalculator {
             .at(lat, lon)
             .execute()
         
+        // commons-suncalc getPhase() 반환 범위: -180 ~ +180
+        //   0도   = 망 (Full Moon)
+        //  ±180도 = 삭 (New Moon)
+        //  -90도  = 하현 (Last Quarter, 주는 중)
+        //  +90도  = 상현 (First Quarter, 차오르는 중)
+        // KASI 기준 정규화 (0=삭, 0.25=상현, 0.5=망, 0.75=하현, 1=삭):
         val phaseAngle = illumination.phase
-        val normalizedPhase = (180.0 + phaseAngle) / 360.0
+        val normalizedPhase = (phaseAngle + 180.0) / 360.0 // 0=New(-180°), 0.5=Full(0°), 1=New(+180°)
         val age = 29.53059 * normalizedPhase
         return MoonIlluminationData(normalizedPhase, age)
     }
@@ -60,13 +66,18 @@ object SolarCalculator {
      * 상세한 태양 관련 시간(일출, 일몰, 골든아워 등)을 계산합니다.
      */
     fun getDetailedSunTimes(date: Date, lat: Double, lon: Double): Map<String, Date?> {
-        val zdt = date.toZonedDateTime().withHour(12).withMinute(0).withSecond(0)
+        // 당일 자정부터 시작해야 오전 출몰 시간을 정확히 찾음 (정오 기준이면 다음날 시간 반환)
+        val startOfDay = date.toZonedDateTime().withHour(0).withMinute(0).withSecond(0).withNano(0)
         
-        val visual = SunTimes.compute().on(zdt).at(lat, lon).execute()
-        val golden = SunTimes.compute().on(zdt).at(lat, lon).twilight(SunTimes.Twilight.GOLDEN_HOUR).execute()
-        val blue = SunTimes.compute().on(zdt).at(lat, lon).twilight(SunTimes.Twilight.BLUE_HOUR).execute()
-        val civil = SunTimes.compute().on(zdt).at(lat, lon).twilight(SunTimes.Twilight.CIVIL).execute()
+        val visual = SunTimes.compute().on(startOfDay).at(lat, lon).execute()
+        val golden = SunTimes.compute().on(startOfDay).at(lat, lon).twilight(SunTimes.Twilight.GOLDEN_HOUR).execute()
+        val blue = SunTimes.compute().on(startOfDay).at(lat, lon).twilight(SunTimes.Twilight.BLUE_HOUR).execute()
+        val civil = SunTimes.compute().on(startOfDay).at(lat, lon).twilight(SunTimes.Twilight.CIVIL).execute()
 
+        // commons-suncalc Twilight 기준:
+        // CIVIL = 태양고도 -6도 (Blue Hour 시작)
+        // BLUE_HOUR = 태양고도 -4도 (Blue↔Golden 경계)
+        // GOLDEN_HOUR = 태양고도 +6도 (Golden Hour 종료)
         return mapOf(
             "sunrise" to visual.rise?.toDate(),
             "sunset" to visual.set?.toDate(),

@@ -34,6 +34,7 @@ class SkyViewModel : ViewModel() {
                 _uiState.update { 
                     it.copy(
                         hourlyWeather = weatherList,
+                        apiSource = source,
                         isLoading = false,
                         lastUpdated = Date()
                     )
@@ -59,7 +60,7 @@ class SkyViewModel : ViewModel() {
 
 data class SkyUiState(
     val hourlyWeather: List<HourlyWeather> = emptyList(),
-    val apiSource: String = "Open-Meteo",
+    val apiSource: String = "KMA",
     val isImperial: Boolean = false,
     val locationName: String? = null,
     val isLoading: Boolean = false,

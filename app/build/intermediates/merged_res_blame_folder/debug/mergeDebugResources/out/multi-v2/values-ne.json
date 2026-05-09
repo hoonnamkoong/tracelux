@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.tl.app-mergeDebugResources-66:/values-ne/values-ne.xml",
+            "outputFile": "com.tl.app-mergeDebugResources-68:/values-ne/values-ne.xml",
             "map": [
                 {
                     "source": "C:\\Users\\Hoon_DT\\.gradle\\caches\\9.0.0\\transforms\\faab8a6733d9a11f6af03adc2d82bc38\\transformed\\core-1.13.0\\res\\values-ne\\values-ne.xml",

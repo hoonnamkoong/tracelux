@@ -14,7 +14,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Tracelux">
         <activity
-            android:name=".MainActivity"
+            android:name="com.tracelux.MainActivity"
             android:exported="true"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.Tracelux">

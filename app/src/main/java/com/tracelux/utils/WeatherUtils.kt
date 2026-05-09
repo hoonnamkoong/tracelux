@@ -27,6 +27,23 @@ object WeatherUtils {
         }
     }
 
+    /** KMA SKY 코드(1=맑음,3=구름많음,4=흐림)로 날씨 설명 반환 */
+    fun getKmaSkyDesc(sky: Int?, pty: Int?): String {
+        if (pty != null && pty > 0) return when (pty) {
+            1 -> "RAINY"
+            2 -> "RAIN/SNOW"
+            3 -> "SNOWY"
+            4 -> "SHOWERY"
+            else -> "RAINY"
+        }
+        return when (sky) {
+            1 -> "CLEAR SKY"
+            3 -> "PARTLY CLOUDY"
+            4 -> "CLOUDY"
+            else -> "CLOUDY"
+        }
+    }
+
     /**
      * 하늘 상태 코드를 설명으로 변환합니다.
      */
@@ -57,11 +74,10 @@ object WeatherUtils {
      * 풍향 각도를 텍스트로 변환합니다.
      */
     fun getWindDirectionText(degree: Double?, windSpeed: Double? = null, isKo: Boolean = true): String {
-        if (degree == null || (windSpeed != null && windSpeed < 0.5)) return "-"
-        val directionsKo = listOf("북", "북동", "동", "남동", "남", "남서", "서", "북서", "북")
+        if (degree == null) return "-"
         val directionsEn = listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW", "N")
         val index = (((degree + 22.5) % 360) / 45).toInt()
-        return if (isKo) directionsKo[index] else directionsEn[index]
+        return directionsEn[index]
     }
 
     /**
@@ -199,8 +215,9 @@ object WeatherUtils {
                         kmaMap.getOrPut(key) { mutableMapOf() }[item.category] = item.fcstValue
                     }
                 }
-                processItems(uResp.response.body?.items?.item)
+                // 단기 예보를 먼저 처리한 뒤, 정확도가 더 높은 초단기 예보로 덮어쓰기 (실제 기상청 방식)
                 processItems(vResp.response.body?.items?.item)
+                processItems(uResp.response.body?.items?.item)
 
                 kmaMap.keys.sorted().forEach { key ->
                     val vals = kmaMap[key]!!
@@ -209,14 +226,15 @@ object WeatherUtils {
                     
                     result.add(HourlyWeather(
                         time = timeStr,
-                        temp = vals["TMP"]?.toDoubleOrNull() ?: vals["T1H"]?.toDoubleOrNull(),
+                        temp = vals["T1H"]?.toDoubleOrNull() ?: vals["TMP"]?.toDoubleOrNull(),
                         humidity = vals["REH"]?.toDoubleOrNull(),
                         weatherCode = vals["SKY"]?.toIntOrNull() ?: 0,
+                        pop = vals["POP"]?.toDoubleOrNull(),
                         sky = vals["SKY"]?.toIntOrNull(),
                         pty = vals["PTY"]?.toIntOrNull(),
                         windSpeed = vals["WSD"]?.toDoubleOrNull(),
                         windDirection = vals["VEC"]?.toDoubleOrNull(),
-                        precipitation = vals["PCP"]?.let { if (it == "강수없음") 0.0 else it.replace("mm", "").toDoubleOrNull() },
+                        precipitation = (vals["RN1"] ?: vals["PCP"])?.let { if (it == "강수없음") 0.0 else it.replace("mm", "").toDoubleOrNull() },
                         lgt = vals["LGT"]?.toIntOrNull(),
                         wav = vals["WAV"]?.toDoubleOrNull(),
                         source = "KMA"
@@ -247,6 +265,18 @@ object WeatherUtils {
                 }
             }
         } catch (e: Exception) { e.printStackTrace() }
-        result
+        
+        // 현재 시간 다음 정각 시간부터 표기되도록 필터링
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        cal.add(Calendar.HOUR_OF_DAY, 1)
+        val nextHour = cal.time
+
+        result.filter { 
+            val d = parseWeatherDate(it.time)
+            !d.before(nextHour)
+        }
     }
 }

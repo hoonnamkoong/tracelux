@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.tl.app-mergeDebugResources-66:/values-zu/values-zu.xml",
+            "outputFile": "com.tl.app-mergeDebugResources-68:/values-zu/values-zu.xml",
             "map": [
                 {
                     "source": "C:\\Users\\Hoon_DT\\.gradle\\caches\\9.0.0\\transforms\\cbbd49d14b32f86095918349f629339d\\transformed\\play-services-basement-18.1.0\\res\\values-zu\\values.xml",

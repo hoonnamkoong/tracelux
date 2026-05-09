@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.tl.app-mergeDebugResources-66:/values-small-v4/values-small-v4.xml",
+            "outputFile": "com.tl.app-mergeDebugResources-68:/values-small-v4/values-small-v4.xml",
             "map": [
                 {
                     "source": "C:\\Users\\Hoon_DT\\.gradle\\caches\\9.0.0\\transforms\\2eedc58f82bcedcb2848dcdd5c022e4f\\transformed\\material-1.12.0\\res\\values-small-v4\\values-small-v4.xml",
