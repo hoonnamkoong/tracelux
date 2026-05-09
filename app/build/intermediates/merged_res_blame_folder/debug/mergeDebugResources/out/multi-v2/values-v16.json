@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.tl.app-mergeDebugResources-66:/values-v16/values-v16.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\Hoon_DT\\.gradle\\caches\\9.0.0\\transforms\\0b1978d22a01dc999f369797dd42daa1\\transformed\\appcompat-1.6.1\\res\\values-v16\\values-v16.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "5",
+                        "endColumns": "12",
+                        "endOffsets": "223"
+                    }
+                }
+            ]
+        }
+    ]
+}

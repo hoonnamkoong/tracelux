@@ -1,0 +1,17 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        mavenCentral() // Maven Central을 최우선으로 배치
+        google()
+        maven { url 'https://jitpack.io' }
+    }
+}
+rootProject.name = "tracelux"
+include ':app'
