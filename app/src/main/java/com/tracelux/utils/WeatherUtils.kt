@@ -190,6 +190,31 @@ object WeatherUtils {
     fun formatVal(v: Double?): String = if (v == null) "-" else String.format("%.1f", v)
     fun formatIntVal(v: Double?): String = if (v == null) "-" else String.format("%.0f", v)
 
+    fun formatTemp(v: Double?, unit: AppUnit): String {
+        if (v == null) return "-"
+        val converted = if (unit == AppUnit.IMPERIAL) v * 1.8 + 32.0 else v
+        return String.format("%.1f", converted)
+    }
+
+    fun formatDistance(km: Double?, unit: AppUnit): String {
+        if (km == null) return "-"
+        val converted = if (unit == AppUnit.IMPERIAL) km * 0.621371 else km
+        return String.format("%.1f", converted)
+    }
+
+    fun formatWaveHeight(m: Double?, unit: AppUnit): String {
+        if (m == null) return "-"
+        val converted = if (unit == AppUnit.IMPERIAL) m * 3.28084 else m
+        return String.format("%.1f", converted)
+    }
+
+    fun formatWindSpeed(ms: Double?, unit: AppUnit): String {
+        if (ms == null) return "-"
+        // Metric: m/s, Imperial: mph
+        val converted = if (unit == AppUnit.IMPERIAL) ms * 2.23694 else ms
+        return String.format("%.1f", converted)
+    }
+
     suspend fun fetchWeather(
         source: String,
         omApi: WeatherApi,

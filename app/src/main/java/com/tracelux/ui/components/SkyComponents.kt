@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tracelux.ui.theme.*
+import com.tracelux.models.AppUnit
 
 @Composable
 fun SkyHeader(locationName: String, onGpsClick: () -> Unit) {
@@ -46,7 +47,7 @@ fun SkyHeader(locationName: String, onGpsClick: () -> Unit) {
 }
 
 @Composable
-fun SkySearchBar(onClick: () -> Unit) {
+fun SkySearchBar(isKo: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -57,12 +58,12 @@ fun SkySearchBar(onClick: () -> Unit) {
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.CenterStart
     ) {
-        Text("주소 또는 장소 검색", color = Color.Gray, fontSize = 14.sp)
+        Text(if (isKo) "주소 또는 장소 검색" else "Search Address or Place", color = Color.Gray, fontSize = 14.sp)
     }
 }
 
 @Composable
-fun SkyConditionsHeader(apiSource: String, onSourceChange: (String) -> Unit, weatherDesc: String) {
+fun SkyConditionsHeader(isKo: Boolean, apiSource: String, onSourceChange: (String) -> Unit, weatherDesc: String) {
     Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 10.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -76,7 +77,7 @@ fun SkyConditionsHeader(apiSource: String, onSourceChange: (String) -> Unit, wea
                     .background(Color(0xFF1E293B), RoundedCornerShape(20.dp))
                     .padding(2.dp)
             ) {
-                SourceButton("기상청", apiSource == "KMA", Modifier.weight(1f)) { onSourceChange("KMA") }
+                SourceButton(if (isKo) "기상청" else "KMA", apiSource == "KMA", Modifier.weight(1f)) { onSourceChange("KMA") }
                 SourceButton("OPEN METEO", apiSource == "Open-Meteo", Modifier.weight(1f)) { onSourceChange("Open-Meteo") }
             }
         }
@@ -123,66 +124,79 @@ private fun SourceButton(label: String, isSelected: Boolean, modifier: Modifier 
 
 @Composable
 fun WeatherGrid(
+    isKo: Boolean, appUnit: AppUnit,
     temp: String, humidity: String, windDir: String,
     pty: String, pop: String, lgt: String,
     wav: String, windSpeed: String, cloudBase: String
 ) {
+    val tUnit = if (appUnit == AppUnit.METRIC) "℃" else "℉"
+    val sUnit = if (appUnit == AppUnit.METRIC) "m/s" else "mph"
+    val dUnit = if (appUnit == AppUnit.METRIC) "km" else "mi"
+    val wUnit = if (appUnit == AppUnit.METRIC) "M" else "ft"
+
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Row(modifier = Modifier.fillMaxWidth()) {
-            WeatherTile("기온", temp, "℃", Modifier.weight(1f))
+            WeatherTile(if (isKo) "기온" else "Temp", temp, tUnit, Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
-            WeatherTile("습도", humidity, "%", Modifier.weight(1f))
+            WeatherTile(if (isKo) "습도" else "Humidity", humidity, "%", Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
-            WeatherTile("풍향", windDir, "", Modifier.weight(1f))
+            WeatherTile(if (isKo) "풍향" else "Wind Dir", windDir, "", Modifier.weight(1f))
         }
         Spacer(modifier = Modifier.height(10.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
-            WeatherTile("강수 형태", pty, "", Modifier.weight(1f))
+            WeatherTile(if (isKo) "강수 형태" else "Precip Type", pty, "", Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
-            WeatherTile("강수 확률", pop, "%", Modifier.weight(1f))
+            WeatherTile(if (isKo) "강수 확률" else "PoP", pop, "%", Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
-            WeatherTile("낙뢰", lgt, "", Modifier.weight(1f))
+            WeatherTile(if (isKo) "낙뢰" else "Lightning", lgt, "", Modifier.weight(1f))
         }
         Spacer(modifier = Modifier.height(10.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
-            WeatherTile("파고", wav, "M", Modifier.weight(1f))
+            WeatherTile(if (isKo) "파고" else "Wave", wav, wUnit, Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
-            WeatherTile("풍속", windSpeed, "m/s", Modifier.weight(1f))
+            WeatherTile(if (isKo) "풍속" else "Wind Spd", windSpeed, sUnit, Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
-            WeatherTile("운저고도 계산", cloudBase, "km", Modifier.weight(1f))
+            WeatherTile(if (isKo) "운저고도 계산" else "Cloud Base", cloudBase, dUnit, Modifier.weight(1f))
         }
     }
 }
 
 @Composable
 fun OpenMeteoWeatherGrid(
+    isKo: Boolean, appUnit: AppUnit,
     temp: String, humidity: String, dewPoint: String,
     pop: String, windDir: String, wavePeriod: String,
     cloudCover: String, cloudBase: String, visibility: String
 ) {
+    val tUnit = if (appUnit == AppUnit.METRIC) "℃" else "℉"
+    val dUnit = if (appUnit == AppUnit.METRIC) "km" else "mi"
+
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+        // Row 1: 기온, 습도, 풍향
         Row(modifier = Modifier.fillMaxWidth()) {
-            WeatherTile("기온", temp, "℃", Modifier.weight(1f))
+            WeatherTile(if (isKo) "기온" else "Temp", temp, tUnit, Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
-            WeatherTile("습도", humidity, "%", Modifier.weight(1f))
+            WeatherTile(if (isKo) "습도" else "Humidity", humidity, "%", Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
-            WeatherTile("이슬점", dewPoint, "℃", Modifier.weight(1f))
+            WeatherTile(if (isKo) "풍향" else "Wind Dir", windDir, "", Modifier.weight(1f))
         }
         Spacer(modifier = Modifier.height(10.dp))
+        // Row 2: 이슬점, 강수 확률, 구름양
         Row(modifier = Modifier.fillMaxWidth()) {
-            WeatherTile("강수 확률", pop, "%", Modifier.weight(1f))
+            WeatherTile(if (isKo) "이슬점" else "Dew Point", dewPoint, tUnit, Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
-            WeatherTile("풍향", windDir, "", Modifier.weight(1f))
+            WeatherTile(if (isKo) "강수 확률" else "PoP", pop, "%", Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
-            WeatherTile("파도 주기", wavePeriod, "", Modifier.weight(1f))
+            WeatherTile(if (isKo) "구름양" else "Cloud Cover", cloudCover, "%", Modifier.weight(1f))
         }
         Spacer(modifier = Modifier.height(10.dp))
+        // Row 3: 가시거리, 파도 주기, 운저고도 계산
         Row(modifier = Modifier.fillMaxWidth()) {
-            WeatherTile("구름양", cloudCover, "%", Modifier.weight(1f))
+            WeatherTile(if (isKo) "가시거리" else "Visibility", visibility, dUnit, Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
-            WeatherTile("운저고도 계산", cloudBase, "km", Modifier.weight(1f))
+            WeatherTile(if (isKo) "파도 주기" else "Wave Period", wavePeriod, "", Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
-            WeatherTile("가시거리", visibility, "km", Modifier.weight(1f))
+            WeatherTile(if (isKo) "운저고도 계산" else "Cloud Base", cloudBase, dUnit, Modifier.weight(1f))
         }
     }
 }

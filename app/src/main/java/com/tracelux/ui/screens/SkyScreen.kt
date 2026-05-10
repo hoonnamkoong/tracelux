@@ -32,9 +32,15 @@ import androidx.compose.foundation.clickable
 import com.tracelux.models.KakaoDocument
 import com.tracelux.api.RetrofitClient
 
+import com.tracelux.ui.viewmodel.OptionsViewModel
+import com.tracelux.models.AppLanguage
+
 @Composable
-fun SkyScreen(viewModel: SkyViewModel = viewModel()) {
+fun SkyScreen(viewModel: SkyViewModel = viewModel(), optionsViewModel: OptionsViewModel = viewModel()) {
     val uiState by viewModel.uiState.collectAsState()
+    val options by optionsViewModel.options.collectAsState()
+    val isKo = options.language == AppLanguage.KO
+    val appUnit = options.unit
     val scrollState = rememberScrollState()
     val context = LocalContext.current
     
@@ -65,12 +71,12 @@ fun SkyScreen(viewModel: SkyViewModel = viewModel()) {
                 lat = lLat
                 lon = lLon
                 val isKorea = lat in 33.0..39.0 && lon in 124.0..132.0
-                if (isKorea) {
-                    viewModel.setApiSource("KMA")
-                } else {
+                
+                // 한국 지역 밖일 때만 오픈 메테오로 강제하고, 한국 내에 있다면 사용자의 현재 선택 유지
+                if (!isKorea) {
                     viewModel.setApiSource("Open-Meteo")
                 }
-                viewModel.fetchWeatherData(lat, lon, if(isKorea) "KMA" else "Open-Meteo", WeatherUtils.KMA_AUTH_KEY)
+                viewModel.fetchWeatherData(lat, lon, uiState.apiSource, WeatherUtils.KMA_AUTH_KEY)
             }
         } catch (e: Exception) {
             // 위치 권한 없거나 실패해도 기본값 유지
@@ -121,28 +127,28 @@ fun SkyScreen(viewModel: SkyViewModel = viewModel()) {
             }
         } else {
             SkyHeader(
-                locationName = uiState.locationName ?: "서울특별시 송파구",
+                locationName = uiState.locationName ?: if(isKo) "서울특별시 송파구" else "Seoul, Songpa-gu",
                 onGpsClick = {
                     try {
                         LocationProvider(context).getCurrentLocation { lLat, lLon ->
                             lat = lLat
                             lon = lLon
                             viewModel.fetchWeatherData(lat, lon, uiState.apiSource, WeatherUtils.KMA_AUTH_KEY)
-                            Toast.makeText(context, "위치가 업데이트되었습니다.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, if(isKo) "위치가 업데이트되었습니다." else "Location updated.", Toast.LENGTH_SHORT).show()
                         }
                     } catch (e: Exception) {
-                        Toast.makeText(context, "위치 정보를 가져올 수 없습니다. 권한을 확인해주세요.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if(isKo) "위치 정보를 가져올 수 없습니다. 권한을 확인해주세요." else "Failed to get location. Check permissions.", Toast.LENGTH_SHORT).show()
                     }
                 }
             )
 
-            SkySearchBar(onClick = { isSearchModalVisible = true })
+            SkySearchBar(isKo = isKo, onClick = { isSearchModalVisible = true })
             Spacer(modifier = Modifier.height(15.dp))
 
             if (isSearchModalVisible) {
                 AlertDialog(
                     onDismissRequest = { isSearchModalVisible = false },
-                    title = { Text("주소 또는 장소 검색", color = Color.White) },
+                    title = { Text(if(isKo) "주소 또는 장소 검색" else "Search Address or Place", color = Color.White) },
                     text = {
                         Column {
                             OutlinedTextField(
@@ -162,7 +168,7 @@ fun SkyScreen(viewModel: SkyViewModel = viewModel()) {
                                     focusedTextColor = Color.White,
                                     unfocusedTextColor = Color.White
                                 ),
-                                placeholder = { Text("검색어 입력") },
+                                placeholder = { Text(if(isKo) "검색어 입력" else "Enter keyword") },
                                 singleLine = true
                             )
                             LazyColumn(modifier = Modifier.height(200.dp).padding(top = 8.dp)) {
@@ -185,7 +191,7 @@ fun SkyScreen(viewModel: SkyViewModel = viewModel()) {
                     },
                     confirmButton = {
                         TextButton(onClick = { isSearchModalVisible = false }) {
-                            Text("닫기", color = Orange)
+                            Text(if(isKo) "닫기" else "Close", color = Orange)
                         }
                     },
                     containerColor = Color(0xFF1E293B)
@@ -200,6 +206,7 @@ fun SkyScreen(viewModel: SkyViewModel = viewModel()) {
             ) {
                 Column {
                     SkyConditionsHeader(
+                        isKo = isKo,
                         apiSource = uiState.apiSource,
                         onSourceChange = { viewModel.setApiSource(it) },
                         weatherDesc = weatherDesc
@@ -208,27 +215,29 @@ fun SkyScreen(viewModel: SkyViewModel = viewModel()) {
                     if (uiState.apiSource == "Open-Meteo") {
                         val visKm = (weather?.visibility ?: 0.0) / 1000.0
                         OpenMeteoWeatherGrid(
-                            temp = WeatherUtils.formatVal(weather?.temp),
+                            isKo = isKo, appUnit = appUnit,
+                            temp = WeatherUtils.formatTemp(weather?.temp, appUnit),
                             humidity = WeatherUtils.formatIntVal(weather?.humidity),
-                            dewPoint = WeatherUtils.formatVal(weather?.dewPoint ?: WeatherUtils.calculateDewPoint(t, h)),
+                            dewPoint = WeatherUtils.formatTemp(weather?.dewPoint ?: WeatherUtils.calculateDewPoint(t, h), appUnit),
                             pop = WeatherUtils.formatIntVal(weather?.pop),
                             windDir = WeatherUtils.getWindDirectionText(weather?.windDirection, weather?.windSpeed),
                             wavePeriod = WeatherUtils.formatVal(weather?.wavePeriod),
                             cloudCover = WeatherUtils.formatIntVal(weather?.cloudCover),
-                            cloudBase = WeatherUtils.formatVal(cloudBase),
-                            visibility = WeatherUtils.formatVal(visKm)
+                            cloudBase = WeatherUtils.formatDistance(cloudBase, appUnit),
+                            visibility = WeatherUtils.formatDistance(visKm, appUnit)
                         )
                     } else {
                         WeatherGrid(
-                            temp = WeatherUtils.formatVal(weather?.temp),
+                            isKo = isKo, appUnit = appUnit,
+                            temp = WeatherUtils.formatTemp(weather?.temp, appUnit),
                             humidity = WeatherUtils.formatIntVal(weather?.humidity),
                             windDir = WeatherUtils.getWindDirectionText(weather?.windDirection, weather?.windSpeed),
                             pty = WeatherUtils.getPtyDesc(weather?.pty),
                             pop = WeatherUtils.formatIntVal(weather?.pop ?: weather?.prec),
                             lgt = WeatherUtils.formatIntVal(weather?.lgt?.toDouble()),
-                            wav = WeatherUtils.formatVal(weather?.wav),
-                            windSpeed = WeatherUtils.formatVal(weather?.windSpeed),
-                            cloudBase = WeatherUtils.formatVal(cloudBase)
+                            wav = WeatherUtils.formatWaveHeight(weather?.wav, appUnit),
+                            windSpeed = WeatherUtils.formatWindSpeed(weather?.windSpeed, appUnit),
+                            cloudBase = WeatherUtils.formatDistance(cloudBase, appUnit)
                         )
                     }
 

@@ -52,10 +52,7 @@ data class WeatherData(
     val hourly: List<HourlyWeather>
 )
 
-enum class AppUnit(val label: String, val description: String) {
-    METRIC("METRIC", "°C, km, m"),
-    IMPERIAL("IMPERIAL", "°F, mi, ft")
-}
+
 
 @Serializable
 data class KakaoDocument(

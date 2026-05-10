@@ -1,8 +1,11 @@
 package com.tracelux.ui.navigation
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,15 +17,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.*
 import com.tracelux.ui.screens.SkyScreen
 import com.tracelux.ui.screens.FieldScreen
+import com.tracelux.ui.screens.InventoryScreen
 import com.tracelux.ui.theme.Orange
 import com.tracelux.ui.theme.DarkBg
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MainAppStructure(navController: NavHostController) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    // Screen.kt에 정의된 bottomNavItems 사용
+    val pagerState = rememberPagerState(pageCount = { bottomNavItems.size })
+    val scope = rememberCoroutineScope()
     
     Scaffold(
         bottomBar = {
@@ -35,16 +42,14 @@ fun MainAppStructure(navController: NavHostController) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 bottomNavItems.forEachIndexed { index, screen ->
-                    val isSelected = selectedTab == index
+                    val isSelected = pagerState.currentPage == index
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .weight(1f)
                             .clickable { 
-                                selectedTab = index
-                                navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.startDestinationId)
-                                    launchSingleTop = true
+                                scope.launch {
+                                    pagerState.animateScrollToPage(index)
                                 }
                             }
                     ) {
@@ -68,26 +73,16 @@ fun MainAppStructure(navController: NavHostController) {
             }
         }
     ) { innerPadding ->
-        AppNavHost(
-            navController = navController,
-            modifier = Modifier.padding(innerPadding)
-        )
-    }
-}
-
-@Composable
-fun AppNavHost(
-    navController: NavHostController,
-    modifier: Modifier = Modifier
-) {
-    NavHost(
-        navController = navController,
-        startDestination = Screen.Sky.route,
-        modifier = modifier
-    ) {
-        composable(Screen.Sky.route) { SkyScreen() }
-        composable(Screen.Field.route) { FieldScreen() }
-        composable(Screen.Inventory.route) { Text("Inventory Screen") }
-        composable(Screen.Options.route) { Text("Options Screen") }
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize().padding(innerPadding)
+        ) { page ->
+            when (page) {
+                0 -> SkyScreen()
+                1 -> FieldScreen()
+                2 -> InventoryScreen()
+                3 -> com.tracelux.ui.screens.OptionsScreen()
+            }
+        }
     }
 }
