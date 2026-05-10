@@ -7,12 +7,13 @@ plugins {
 
 android {
     namespace 'com.tl'
-    compileSdk 34
+    compileSdk 36
+    buildToolsVersion "36.0.0"
 
     defaultConfig {
         applicationId "com.tracelux"
         minSdk 26
-        targetSdk 34
+        targetSdk 36
         versionCode 1
         versionName "1.0"
     }
@@ -77,4 +78,7 @@ dependencies {
 
     // Astronomy (Sun/Moon calculation)
     implementation 'org.shredzone.commons:commons-suncalc:3.11'
+
+    // AR SceneView
+    implementation 'io.github.sceneview:arsceneview:0.10.0'
 }

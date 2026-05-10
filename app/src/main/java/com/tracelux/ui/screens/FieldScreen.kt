@@ -203,28 +203,79 @@ fun FieldScreen(
                     Text("• ND EXP: $ndDesc", color = TextDim, fontSize = 12.sp)
                 }
             }
+
+            // 04 AR SIMULATOR (New Entry Button)
+            item {
+                Spacer(modifier = Modifier.height(30.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(80.dp)
+                        .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+                        .border(1.dp, Orange.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                        .clickable { showSheet = "AR_SIM" } // Temporary: Use sheet or navigation
+                        .padding(horizontal = 24.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(Orange.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("AR", color = Orange, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = "04 AR SIMULATOR",
+                                color = Color.White,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                            Text(
+                                text = if (isKo) "카메라 증강현실 시뮬레이션" else "Camera AR Simulation",
+                                color = TextDim,
+                                fontSize = 12.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text("GO", color = Orange, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                    }
+                }
+                Spacer(modifier = Modifier.height(40.dp))
+            }
         }
 
         // BottomSheet Logic
         if (showSheet != null) {
-            ModalBottomSheet(
-                onDismissRequest = { showSheet = null },
-                sheetState = sheetState,
-                containerColor = CardBg,
-                dragHandle = { BottomSheetDefaults.DragHandle(color = TextDim.copy(alpha = 0.4f)) }
-            ) {
-                SheetContent(
-                    type = showSheet!!,
-                    uiState = uiState,
-                    inventoryList = inventoryList,
-                    onSelectGear = { item -> 
-                        viewModel.selectGear(item)
-                        showSheet = null
-                    },
-                    onToggleNd = { viewModel.toggleNdFilter(it) },
-                    onUpdateState = { viewModel.updateState(it) },
+            if (showSheet == "AR_SIM") {
+                // AR Simulator Full Screen Overlay
+                com.tracelux.ar.ArSimulatorScreen(
+                    selectedFocalLength = uiState.currentFocal.toFloatOrNull() ?: 50f,
                     onClose = { showSheet = null }
                 )
+            } else {
+                ModalBottomSheet(
+                    onDismissRequest = { showSheet = null },
+                    sheetState = sheetState,
+                    containerColor = CardBg,
+                    dragHandle = { BottomSheetDefaults.DragHandle(color = TextDim.copy(alpha = 0.4f)) }
+                ) {
+                    SheetContent(
+                        type = showSheet!!,
+                        uiState = uiState,
+                        inventoryList = inventoryList,
+                        onSelectGear = { item -> 
+                            viewModel.selectGear(item)
+                            showSheet = null
+                        },
+                        onToggleNd = { viewModel.toggleNdFilter(it) },
+                        onUpdateState = { viewModel.updateState(it) },
+                        onClose = { showSheet = null }
+                    )
+                }
             }
         }
     }
