@@ -98,38 +98,76 @@ fun ArHorizonCompass(azimuth: Float, direction: String, pitch: Float, fovY: Floa
 
 @Composable
 fun ArTiltScale(pitch: Float) {
-    Box(modifier = Modifier.fillMaxHeight().width(80.dp).padding(start = 16.dp)) {
+    Box(
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(100.dp)
+            .padding(start = 16.dp)
+    ) {
         Text(
             text = "TILT",
             color = Color.White,
-            fontSize = 12.sp,
+            fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.align(Alignment.TopStart).padding(top = 100.dp)
+            modifier = Modifier.align(Alignment.TopStart).padding(top = 0.dp) // 상단으로 이동
         )
-        Canvas(modifier = Modifier.fillMaxHeight(0.6f).width(40.dp).align(Alignment.CenterStart)) {
-            val h = size.height
-            val w = size.width
-            val step = h / 40f // -20 ~ 20 degree range for scale
-            for (i in -20..20 step 2) {
-                val y = (h / 2f) - (i * step)
-                val isMajor = i % 10 == 0
-                val lineW = if (isMajor) w * 0.5f else w * 0.25f
+        Canvas(modifier = Modifier.fillMaxHeight(0.6f).fillMaxWidth().padding(top = 20.dp).align(Alignment.TopStart)) {
+            val totalH = size.height
+            // Range: +90 (Top) to -90 (Bottom)
+            val pxPerDeg = totalH / 180f
+            val railX = 2.dp.toPx()
+
+            // Vertical Rail
+            drawLine(
+                color = Color.White.copy(alpha = 0.3f),
+                start = Offset(railX, 0f),
+                end = Offset(railX, totalH),
+                strokeWidth = 1.dp.toPx()
+            )
+
+            // Ticks: Every 30 degrees
+            for (deg in -90..90 step 15) {
+                // Invert: +90 is top (y=0), -90 is bottom (y=totalH)
+                val y = (90 - deg) * pxPerDeg
+                val isMajor = deg % 30 == 0
+                val tickLen = if (isMajor) 12.dp.toPx() else 6.dp.toPx()
                 drawLine(
-                    color = Color.White.copy(alpha = 0.5f),
-                    start = Offset(0f, y),
-                    end = Offset(lineW, y),
-                    strokeWidth = 1.dp.toPx()
+                    color = Color.White.copy(alpha = 0.6f),
+                    start = Offset(railX, y),
+                    end = Offset(railX + tickLen, y),
+                    strokeWidth = if (isMajor) 2.dp.toPx() else 1.dp.toPx()
                 )
+                if (isMajor) {
+                    drawContext.canvas.nativeCanvas.drawText(
+                        if (deg >= 0) "+$deg" else "$deg",
+                        railX + tickLen + 6.dp.toPx(),
+                        y + 4.dp.toPx(),
+                        Paint().apply {
+                            color = android.graphics.Color.WHITE
+                            textSize = 10.sp.toPx()
+                            textAlign = Paint.Align.LEFT
+                        }
+                    )
+                }
             }
-            
-            // Pitch text on the RIGHT of the scale lines
+
+            // Arrow pointing at current pitch (정삼각형: 높이 약 10.4dp, 밑변 12dp)
+            val arrowY = (90 - pitch.coerceIn(-90f, 90f)) * pxPerDeg
+            val path = Path()
+            path.moveTo(railX, arrowY) // Tip touches the rail
+            path.lineTo(railX + 10.4.dp.toPx(), arrowY - 6.dp.toPx())
+            path.lineTo(railX + 10.4.dp.toPx(), arrowY + 6.dp.toPx())
+            path.close()
+            drawPath(path = path, color = Color.White)
+
+            // Current Pitch Text (Left of the scale)
             drawContext.canvas.nativeCanvas.drawText(
                 "${pitch.toInt()}°",
-                w * 0.5f + 4.dp.toPx(),
-                h / 2f + 4.dp.toPx(),
+                railX + 32.dp.toPx(),
+                totalH / 2f + 5.dp.toPx(),
                 Paint().apply {
                     color = android.graphics.Color.WHITE
-                    textSize = 14.sp.toPx()
+                    textSize = 16.sp.toPx()
                     textAlign = Paint.Align.LEFT
                     isFakeBoldText = true
                     setShadowLayer(4f, 2f, 2f, android.graphics.Color.BLACK)
@@ -154,7 +192,11 @@ fun ArTimeSimulationScale(timeOffset: Float, onTimeChange: (Float) -> Unit) {
             // delta(픽셀) / totalH(픽셀) * 24시간 = 시간 변화량
             // 감도를 2배로 높여 더 빠르게 반응하도록 수정
             val deltaHours = (delta * 2.0f / totalH) * 24f
-            val newTime = (timeOffset + deltaHours).coerceIn(0f, 24f)
+            var newTime = (timeOffset + deltaHours).coerceIn(0f, 24f)
+            
+            // 10분 단위(1/6시간)로 스냅(Snap) 적용
+            newTime = (Math.round(newTime * 6.0) / 6.0).toFloat().coerceIn(0f, 24f)
+            
             onTimeChange(newTime)
         }
 
@@ -170,9 +212,9 @@ fun ArTimeSimulationScale(timeOffset: Float, onTimeChange: (Float) -> Unit) {
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             softWrap = false,
-            modifier = Modifier.align(Alignment.TopEnd).padding(top = 100.dp)
+            modifier = Modifier.align(Alignment.TopEnd).padding(top = 0.dp) // 상단으로 이동
         )
-        Canvas(modifier = Modifier.fillMaxHeight(0.6f).fillMaxWidth().align(Alignment.CenterEnd)) {
+        Canvas(modifier = Modifier.fillMaxHeight(0.6f).fillMaxWidth().padding(top = 20.dp).align(Alignment.TopEnd)) {
             val totalH = size.height
             val pxPerHour = totalH / 24f
             val railX = size.width - 2.dp.toPx()
@@ -203,20 +245,25 @@ fun ArTimeSimulationScale(timeOffset: Float, onTimeChange: (Float) -> Unit) {
                 }
             }
 
-            // Arrow pointing at selected time
+            // Arrow pointing at selected time (정삼각형: 높이 약 10.4dp, 밑변 12dp)
             val arrowY = totalH * (timeOffset / 24f)
             val path = Path()
-            path.moveTo(railX + 6.dp.toPx(), arrowY)
-            path.lineTo(railX - 6.dp.toPx(), arrowY - 6.dp.toPx())
-            path.lineTo(railX - 6.dp.toPx(), arrowY + 6.dp.toPx())
+            path.moveTo(railX, arrowY) // Tip touches the rail exactly
+            path.lineTo(railX - 10.4.dp.toPx(), arrowY - 6.dp.toPx())
+            path.lineTo(railX - 10.4.dp.toPx(), arrowY + 6.dp.toPx())
             path.close()
             drawPath(path = path, color = Color(0xFFFFC300))
 
             // Fixed Time text in the exact center of the scale
-            val timeText = if (timeOffset % 1 == 0f) "${timeOffset.toInt()}" else String.format("%.1f", timeOffset)
+            // 10분 단위 표시: 17:10 -> 17.1, 17:50 -> 17.5 형식
+            val hours = timeOffset.toInt()
+            val minutes = Math.round((timeOffset % 1f) * 60f).toInt()
+            val tensOfMinutes = (minutes / 10).coerceIn(0, 5)
+            val timeText = if (tensOfMinutes == 0) "$hours" else "$hours.$tensOfMinutes"
+            
             drawContext.canvas.nativeCanvas.drawText(
                 timeText,
-                railX - 24.dp.toPx(),
+                railX - 32.dp.toPx(), // Move a bit more left to avoid overlap with rail numbers
                 totalH / 2f + 5.dp.toPx(),
                 Paint().apply {
                     color = android.graphics.Color.parseColor("#FFC300")

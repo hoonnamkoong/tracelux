@@ -67,12 +67,15 @@ fun FieldScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         GearCard(
-                            label = selectedCamera?.let { "${it.brand} ${it.model ?: ""}" } ?: if(isKo) "카메라 선택" else "Select Camera",
+                            label = selectedCamera?.let { "${it.brand}\n${it.model ?: ""}" } ?: if(isKo) "카메라 선택" else "Select Camera",
                             onClick = { showSheet = "GEAR_CAM" },
                             modifier = Modifier.weight(1f)
                         )
                         GearCard(
-                            label = selectedLens?.let { "${it.brand} ${it.model ?: ""}" } ?: if(isKo) "렌즈 선택" else "Select Lens",
+                            label = selectedLens?.let { 
+                                val focal = if (it.lensType == LensType.PRIME) "${it.focalLength}mm" else "${it.minFocal}-${it.maxFocal}mm"
+                                "${it.brand}\n${it.model ?: ""} $focal"
+                            } ?: if(isKo) "렌즈 선택" else "Select Lens",
                             onClick = { showSheet = "GEAR_LENS" },
                             modifier = Modifier.weight(1f)
                         )
@@ -213,7 +216,7 @@ fun FieldScreen(
                         .height(80.dp)
                         .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
                         .border(1.dp, Orange.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-                        .clickable { showSheet = "AR_SIM" } // Temporary: Use sheet or navigation
+                        .clickable { showSheet = "AR_SIM" }
                         .padding(horizontal = 24.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
@@ -243,6 +246,15 @@ fun FieldScreen(
                         Spacer(modifier = Modifier.weight(1f))
                         Text("GO", color = Orange, fontWeight = FontWeight.Black, fontSize = 14.sp)
                     }
+                }
+                // AR Annotation
+                Column(modifier = Modifier.padding(top = 10.dp, start = 4.dp)) {
+                    val arFovDesc = if (isKo) "AR의 화각은 '02 카메라 세팅'의 초점거리 값을 기준으로 표시됩니다." else "AR FOV is based on the focal length set in '02 CAMERA SETTING'."
+                    val arCalibDesc = if (isKo) "AR 위치가 맞지 않을 경우 화면을 좌우로 드래그하여 오차를 보정할 수 있습니다." else "If AR position is inaccurate, drag left/right to calibrate."
+
+                    Text("• $arFovDesc", color = TextDim, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("• $arCalibDesc", color = TextDim, fontSize = 12.sp)
                 }
                 Spacer(modifier = Modifier.height(40.dp))
             }
@@ -691,7 +703,12 @@ fun InventoryItemRow(item: InventoryItem, isSelected: Boolean, onClick: () -> Un
         Column(modifier = Modifier.weight(1f)) {
             Text(text = "${item.brand} ${item.model ?: ""}", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
             Text(
-                text = if (item.category == InventoryCategory.CAMERA) "${item.sensor?.displayName} · ${item.megapixels}MP" else "${item.lensType?.displayName} · ${item.minFocal}-${item.maxFocal}mm",
+                text = if (item.category == InventoryCategory.CAMERA) {
+                    "${item.sensor?.displayName} · ${item.megapixels}MP"
+                } else {
+                    val focal = if (item.lensType == LensType.PRIME) "${item.focalLength}mm" else "${item.minFocal}-${item.maxFocal}mm"
+                    "${item.lensType?.displayName} · $focal"
+                },
                 color = TextDim,
                 fontSize = 12.sp
             )

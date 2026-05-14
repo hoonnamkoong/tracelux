@@ -32,12 +32,14 @@ fun MainAppStructure(navController: NavHostController) {
     val scope = rememberCoroutineScope()
     
     Scaffold(
+        containerColor = DarkBg,
         bottomBar = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(DarkBg)
-                    .padding(bottom = 20.dp, top = 8.dp),
+                    .windowInsetsPadding(WindowInsets.navigationBars) // 시스템 네비게이션 바 영역 확보
+                    .padding(vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -53,20 +55,20 @@ fun MainAppStructure(navController: NavHostController) {
                                 }
                             }
                     ) {
-                        // 상단 인디케이터
+                        Text(
+                            text = screen.title,
+                            color = if (isSelected) Orange else Color.Gray,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        // 하단 인디케이터 (텍스트 아래로 이동)
                         Box(
                             modifier = Modifier
                                 .width(30.dp)
                                 .height(4.dp)
                                 .clip(RoundedCornerShape(2.dp))
                                 .background(if (isSelected) Orange else Color.Transparent)
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = screen.title,
-                            color = if (isSelected) Orange else Color.Gray,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
                         )
                     }
                 }

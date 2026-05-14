@@ -117,4 +117,34 @@ object ArMathUtils {
         
         return (targetTan / deviceTan).toFloat().coerceIn(0.1f, 3.0f)
     }
+
+    /**
+     * 행렬을 Z축(수직축) 기준으로 회전 (자기 편각 보정용)
+     */
+    fun rotateMatrixZ(matrix: FloatArray, degrees: Float): FloatArray {
+        val result = FloatArray(9)
+        val angleRad = Math.toRadians(degrees.toDouble())
+        val cosA = cos(angleRad).toFloat()
+        val sinA = sin(angleRad).toFloat()
+
+        // ENU 좌표계에서 Z축 회전 (X, Y 평면 회전)
+        // x' = x*cos - y*sin
+        // y' = x*sin + y*cos
+        // 행렬 곱셈: R_z * Matrix
+        result[0] = matrix[0] * cosA - matrix[3] * sinA
+        result[1] = matrix[1] * cosA - matrix[4] * sinA
+        result[2] = matrix[2] * cosA - matrix[5] * sinA
+
+        result[3] = matrix[0] * sinA + matrix[3] * cosA
+        result[4] = matrix[1] * sinA + matrix[4] * cosA
+        result[5] = matrix[2] * sinA + matrix[5] * cosA
+
+        result[6] = matrix[6]
+        result[7] = matrix[7]
+        result[8] = matrix[8]
+
+        return result
+    }
 }
+
+

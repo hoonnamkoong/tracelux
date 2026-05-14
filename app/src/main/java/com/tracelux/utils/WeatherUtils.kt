@@ -61,7 +61,7 @@ object WeatherUtils {
      */
     fun getPtyDesc(code: Int?): String {
         return when (code) {
-            0 -> "None"
+            0 -> "-"
             1 -> "Rain"
             2 -> "Rain/Snow"
             3 -> "Snow"

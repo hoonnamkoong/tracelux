@@ -19,7 +19,7 @@ import kotlin.math.roundToInt
  */
 class FieldViewModel(application: Application) : AndroidViewModel(application) {
     private val fieldStorage = FieldStorage(application)
-    private val inventoryStorage = InventoryStorage(application)
+    private val inventoryStorage = InventoryStorage.getInstance(application)
 
     private val _uiState = MutableStateFlow(fieldStorage.loadFieldState())
     val uiState: StateFlow<FieldState> = _uiState.asStateFlow()
@@ -28,34 +28,38 @@ class FieldViewModel(application: Application) : AndroidViewModel(application) {
     val inventoryList: StateFlow<List<InventoryItem>> = _inventoryList.asStateFlow()
 
     init {
-        refreshInventory()
-    }
-
-    fun refreshInventory() {
         viewModelScope.launch {
-            val items = inventoryStorage.loadInventory()
-            _inventoryList.value = items
-            
-            // 자동 선택 로직 (선택된 장비가 없고 인벤토리에 장비가 있을 경우)
-            val current = _uiState.value
-            var updated = current
-            
-            if (current.selectedCameraId == null) {
-                items.firstOrNull { it.category == InventoryCategory.CAMERA }?.let {
-                    updated = updated.copy(selectedCameraId = it.id)
+            inventoryStorage.items.collect { items ->
+                _inventoryList.value = items
+                
+                // 자동 선택 로직 (선택된 장비가 없고 인벤토리에 장비가 있을 경우)
+                val current = _uiState.value
+                var updated = current
+                
+                if (current.selectedCameraId == null) {
+                    items.firstOrNull { it.category == InventoryCategory.CAMERA }?.let {
+                        updated = updated.copy(selectedCameraId = it.id)
+                    }
                 }
-            }
-            if (current.selectedLensId == null) {
-                items.firstOrNull { it.category == InventoryCategory.LENS }?.let {
-                    updated = updated.copy(selectedLensId = it.id)
+                if (current.selectedLensId == null) {
+                    items.firstOrNull { it.category == InventoryCategory.LENS }?.let {
+                        updated = updated.copy(selectedLensId = it.id)
+                    }
                 }
-            }
-            
-            if (updated != current) {
-                _uiState.value = updated
-                fieldStorage.saveFieldState(updated)
+                
+                if (updated != current) {
+                    _uiState.value = updated
+                    fieldStorage.saveFieldState(updated)
+                }
             }
         }
+    }
+
+    /**
+     * 수동 갱신 함수는 Flow에 의해 자동 처리되므로 삭제하거나 빈 함수로 남깁니다.
+     */
+    fun refreshInventory() {
+        // Flow 관찰에 의해 자동 처리됩니다.
     }
 
     /**

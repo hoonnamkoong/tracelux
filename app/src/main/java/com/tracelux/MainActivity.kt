@@ -2,6 +2,9 @@ package com.tracelux
 
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.activity.enableEdgeToEdge
+import android.graphics.Color
+import androidx.activity.SystemBarStyle
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -16,6 +19,10 @@ import com.tracelux.ui.theme.TraceluxTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
+        ) // 시스템 바 투명화 및 다크 테마 강제
         setContent {
             TraceluxTheme {
                 val navController = rememberNavController()

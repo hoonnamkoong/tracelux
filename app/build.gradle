@@ -5,17 +5,47 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.serialization' version '2.0.0'
 }
 
+// local.properties에서 키스토어 정보를 안전하게 읽어오는 로직
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localProperties.load(new FileInputStream(localPropertiesFile))
+}
+
 android {
     namespace 'com.tl'
     compileSdk 36
     buildToolsVersion "36.0.0"
 
+    // 릴리스 서명 설정 (local.properties에서 비밀번호를 읽어옴)
+    signingConfigs {
+        release {
+            storeFile file(localProperties['RELEASE_STORE_FILE'] ?: 'dummy.jks')
+            storePassword localProperties['RELEASE_STORE_PASSWORD'] ?: ''
+            keyAlias localProperties['RELEASE_KEY_ALIAS'] ?: ''
+            keyPassword localProperties['RELEASE_KEY_PASSWORD'] ?: ''
+        }
+    }
+
     defaultConfig {
         applicationId "com.tracelux"
         minSdk 26
         targetSdk 36
-        versionCode 1
+        versionCode 1169
         versionName "1.0"
+    }
+
+    // 릴리스 빌드 타입 설정
+    buildTypes {
+        release {
+            minifyEnabled true        // 코드 난독화 (R8)
+            shrinkResources true      // 미사용 리소스 제거
+            signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            minifyEnabled false
+        }
     }
 
     packaging {

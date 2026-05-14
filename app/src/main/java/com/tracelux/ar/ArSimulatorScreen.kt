@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
+import kotlin.math.*
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -64,7 +65,7 @@ fun ArSimulatorScreen(
     var thermalStatus by remember { mutableIntStateOf(0) }
     // 원본 APK: 회전 행렬 상태 (센서 콜백에서 업데이트)
     var rotationMatrix by remember { mutableStateOf(FloatArray(9)) }
-    // 원본 APK: 자기 편각 (현재 0f, 향후 GeomagneticField로 계산 가능)
+    // 자기 편각 (GeomagneticField로 계산)
     var magneticDeclination by remember { mutableFloatStateOf(0f) }
     // 원본 APK: 발열 상태에 따른 FPS (4 이상이면 15fps, 아니면 30fps)
     var currentFps by remember { mutableIntStateOf(30) }
@@ -72,14 +73,34 @@ fun ArSimulatorScreen(
     val fovX by remember { mutableFloatStateOf(ArMathUtils.calculateDeviceHorizontalFov(context)) }
     val fovY by remember { mutableFloatStateOf(ArMathUtils.calculateDeviceVerticalFov(context)) }
 
+    val lat by remember { mutableDoubleStateOf(37.5665) }
+    val lng by remember { mutableDoubleStateOf(126.9780) }
+
     var timeOffset by remember {
         mutableFloatStateOf(
             Calendar.getInstance().get(Calendar.HOUR_OF_DAY) +
             Calendar.getInstance().get(Calendar.MINUTE) / 60f
         )
     }
-    val lat by remember { mutableDoubleStateOf(37.5665) }
-    val lng by remember { mutableDoubleStateOf(126.9780) }
+
+    LaunchedEffect(lat, lng) {
+        try {
+            val geoField = android.hardware.GeomagneticField(
+                lat.toFloat(),
+                lng.toFloat(),
+                0f,
+                System.currentTimeMillis()
+            )
+            // 지자기 편각 (Declination). 진북(True North)과 자북(Magnetic North)의 차이입니다.
+            // 동쪽 편각은 양수, 서쪽 편각은 음수입니다. 한국은 보통 서편각(-8도 등)입니다.
+            magneticDeclination = geoField.declination
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to calculate GeomagneticField: ${e.message}")
+        }
+    }
+
+    // 수동 보정값 (사용자가 화면 드래그로 미세 조정)
+    var manualAzimuthOffset by remember { mutableFloatStateOf(0f) }
 
     // 원본 APK: Map<String, Boolean>으로 토글 상태 관리 (ROTATE 포함)
     var toggles by remember {
@@ -100,6 +121,14 @@ fun ArSimulatorScreen(
         }
         onDispose {
             window?.let { WindowCompat.getInsetsController(it, view).show(WindowInsetsCompat.Type.navigationBars()) }
+        }
+    }
+
+    // ─── 화면 종료 시 세로 모드 복구 ──────────────────────────────────────
+    DisposableEffect(context) {
+        onDispose {
+            val activity = context as? Activity
+            activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
 
@@ -134,22 +163,48 @@ fun ArSimulatorScreen(
                     try {
                         @Suppress("DEPRECATION")
                         val displayRotation = windowManager.defaultDisplay.rotation
-                        val angles = ArMathUtils.extractOrientationAngles(event.values, displayRotation)
+                        
+                        // 1. 센서에서 원본 회전 행렬 추출
+                        val rawMatrix = FloatArray(9)
+                        SensorManager.getRotationMatrixFromVector(rawMatrix, event.values)
+                        
+                        // 2. 자기 편각 보정 (자북 -> 진북 회전)
+                        // 행렬 자체를 진북 기준으로 회전시켜 모든 후속 계산이 진북 기반이 되게 함
+                        val trueMatrix = ArMathUtils.rotateMatrixZ(rawMatrix, magneticDeclination)
+                        
+                        // 3. 화면 회전에 따른 좌표계 재매핑 (보정된 행렬 사용)
+                        val remappedMatrix = FloatArray(9)
+                        when (displayRotation) {
+                            android.view.Surface.ROTATION_90 -> SensorManager.remapCoordinateSystem(trueMatrix, 2, 129, remappedMatrix)
+                            android.view.Surface.ROTATION_180 -> SensorManager.remapCoordinateSystem(trueMatrix, 129, 130, remappedMatrix)
+                            android.view.Surface.ROTATION_270 -> SensorManager.remapCoordinateSystem(trueMatrix, 130, 1, remappedMatrix)
+                            else -> System.arraycopy(trueMatrix, 0, remappedMatrix, 0, 9)
+                        }
+                        
+                        // 4. 오리엔테이션 각도 추출 (이미 진북 보정됨)
+                        // ArMathUtils.extractOrientationAngles 내부 로직 중 remap 부분을 건너뛰고 각도만 계산하기 위해 
+                        // 커스텀 수식 직접 적용 (또는 extractOrientationAngles를 수정해서 사용 가능하지만 여기선 직접 계산)
+                        val cx = -remappedMatrix[2]
+                        val cy = -remappedMatrix[5]
+                        val cz = -remappedMatrix[8]
+                        
+                        val pitchDeg = Math.toDegrees(asin(cz.coerceIn(-1f, 1f).toDouble())).toFloat()
+                        val newRawAzimuth = (Math.toDegrees(atan2(cx.toDouble(), cy.toDouble())).toFloat() + 360.0f) % 360.0f
+                        
+                        val orientation = FloatArray(3)
+                        SensorManager.getOrientation(remappedMatrix, orientation)
+                        // rollDeg는 orientation[2]
 
-                        // 원본 APK: rawAzimuth로 Low-Pass Filter 적용
-                        val newRaw = (angles[0] + 360f) % 360f
-                        var diff = newRaw - rawAzimuth
+                        // Low-Pass Filter 적용
+                        var diff = newRawAzimuth - rawAzimuth
                         if (diff > 180f) diff -= 360f
                         if (diff < -180f) diff += 360f
                         rawAzimuth = ((rawAzimuth + filterAlpha * diff) + 360f) % 360f
-                        azimuth = ((rawAzimuth + magneticDeclination) + 360f) % 360f
+                        azimuth = (rawAzimuth + manualAzimuthOffset + 360f) % 360f // 수동 보정값 반영
 
-                        pitch = pitch + filterAlpha * (angles[1] - pitch)
+                        pitch = pitch + filterAlpha * (pitchDeg - pitch)
 
-                        // 원본 APK: 회전 행렬을 상태로 저장 (복사본)
-                        val lastMatrix = ArMathUtils.getLastRotationMatrix()
-                        rotationMatrix = lastMatrix.copyOf()
-
+                        rotationMatrix = remappedMatrix.copyOf()
                         isEcoMode = pitch < -70f
                     } catch (e: Exception) {
                         Log.w(TAG, "Sensor error: ${e.message}")
@@ -249,8 +304,10 @@ fun ArSimulatorScreen(
                 .fillMaxSize()
                 .background(Color.Black)
                 .pointerInput(Unit) {
-                    detectHorizontalDragGestures { change, _ ->
+                    detectHorizontalDragGestures { change, dragAmount ->
                         change.consume()
+                        // 드래그로 방위각 미세 보정 (감도 조절)
+                        manualAzimuthOffset = (manualAzimuthOffset - dragAmount / 10f)
                     }
                 }
         ) {
@@ -320,7 +377,7 @@ fun ArSimulatorScreen(
         ArCelestialOverlay(
             markers = activeMarkers,
             rotationMatrix = rotationMatrix,
-            magneticDeclination = magneticDeclination,
+            magneticDeclination = manualAzimuthOffset, // 수동 보정값을 전달
             hFov = fovX,
             vFov = fovY
         )
@@ -334,22 +391,23 @@ fun ArSimulatorScreen(
             )
         }
 
-        // 기울기 스케일 (좌측 고정)
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
+        // 기울기 스케일 (좌측 고정, 가로 모드 시 약간 위로 이동)
+        Box(
+            modifier = Modifier.fillMaxSize().padding(top = if(isLandscape) 40.dp else 120.dp), 
+            contentAlignment = Alignment.TopStart
+        ) {
             ArTiltScale(pitch = pitch)
         }
-
-        // 시간 시뮬레이션 스케일 (우측 고정)
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.CenterEnd) {
+        
+        // 시간 시뮬레이션 스케일 (우측 고정, 가로 모드 시 약간 위로 이동)
+        Box(
+            modifier = Modifier.fillMaxSize().padding(top = if(isLandscape) 40.dp else 120.dp), 
+            contentAlignment = Alignment.TopEnd
+        ) {
             ArTimeSimulationScale(timeOffset = timeOffset, onTimeChange = { timeOffset = it })
         }
 
-        // 상단 정보 (가로 모드 시 35mm 표시)
-        if (isLandscape) {
-            Box(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), contentAlignment = Alignment.TopCenter) {
-                Text("${selectedFocalLength.toInt()}mm", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            }
-        }
+
 
         // 하단 컨트롤 영역
         if (isLandscape) {

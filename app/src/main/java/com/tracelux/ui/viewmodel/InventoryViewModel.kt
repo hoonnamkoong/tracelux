@@ -15,27 +15,29 @@ import kotlinx.coroutines.launch
  * 인벤토리 화면 ViewModel
  */
 class InventoryViewModel(application: Application) : AndroidViewModel(application) {
-    private val storage = InventoryStorage(application)
+    private val storage = InventoryStorage.getInstance(application)
     
     private val _inventoryList = MutableStateFlow<List<InventoryItem>>(emptyList())
     val inventoryList: StateFlow<List<InventoryItem>> = _inventoryList.asStateFlow()
 
     init {
-        loadItems()
+        viewModelScope.launch {
+            storage.items.collect { items ->
+                val sortedItems = items.sortedWith(
+                    compareBy<InventoryItem> { it.category != InventoryCategory.CAMERA }
+                        .thenBy { it.id }
+                )
+                _inventoryList.value = sortedItems
+            }
+        }
     }
 
     /**
-     * 저장된 아이템 로드 및 정렬 (카메라 우선 -> ID순)
+     * 수동 아이템 로드 함수는 Flow에 의해 자동 갱신되므로 삭제하거나 빈 함수로 남길 수 있습니다.
+     * 호환성을 위해 남겨둡니다.
      */
     fun loadItems() {
-        viewModelScope.launch {
-            val items = storage.loadInventory()
-            val sortedItems = items.sortedWith(
-                compareBy<InventoryItem> { it.category != InventoryCategory.CAMERA }
-                    .thenBy { it.id }
-            )
-            _inventoryList.value = sortedItems
-        }
+        // Flow 관찰에 의해 자동 처리됩니다.
     }
 
     /**
